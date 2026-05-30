@@ -2,6 +2,14 @@
 // generation `input` payload. Kept framework-free so they're easy to test.
 import type { SchemaField, SchemaSelectOption } from "@/lib/types";
 
+/** A universal prompt field used as a fallback when a model exposes no schema. */
+export const PROMPT_FIELD: SchemaField = {
+  name: "prompt",
+  label: "توضیح (Prompt)",
+  type: "textarea",
+  required: true,
+};
+
 export function optionValue(o: SchemaSelectOption): {
   value: string;
   label: string;
@@ -48,6 +56,21 @@ export function normalizeSchema(schema: unknown): SchemaField[] {
     .filter(([, v]) => v && typeof v === "object")
     .map(([key, v]) => coerceField({ name: key, ...(v as object) }))
     .filter((f) => f.name);
+}
+
+/**
+ * The fields to actually render for a model. Falls back to a single prompt
+ * field when the model exposes no usable schema, so image/video/audio models
+ * are always submittable (the backend rejects empty input with "prompt is
+ * required"). Also guarantees a prompt field exists if the schema somehow
+ * omits it.
+ */
+export function resolveFields(schema: unknown): SchemaField[] {
+  const fields = normalizeSchema(schema);
+  // No usable schema → fall back to a single required prompt field so the
+  // model stays submittable (the backend rejects empty input with
+  // "prompt is required").
+  return fields.length === 0 ? [PROMPT_FIELD] : fields;
 }
 
 function isFieldLike(v: unknown): boolean {

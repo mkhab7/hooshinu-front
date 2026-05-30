@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   optionValue,
   normalizeSchema,
+  resolveFields,
+  PROMPT_FIELD,
   defaults,
   buildInput,
   firstMissingRequired,
@@ -76,6 +78,28 @@ describe("normalizeSchema", () => {
   it("supports `key`/`title` aliases for name/label", () => {
     const out = normalizeSchema([{ key: "prompt", title: "متن", type: "textarea" }]);
     expect(out[0]).toMatchObject({ name: "prompt", label: "متن" });
+  });
+});
+
+describe("resolveFields", () => {
+  it("falls back to a single required prompt field when schema is empty/missing", () => {
+    expect(resolveFields(undefined)).toEqual([PROMPT_FIELD]);
+    expect(resolveFields(null)).toEqual([PROMPT_FIELD]);
+    expect(resolveFields([])).toEqual([PROMPT_FIELD]);
+    expect(resolveFields("garbage")).toEqual([PROMPT_FIELD]);
+  });
+
+  it("uses the model's own fields when present", () => {
+    const out = resolveFields([
+      { name: "aspect_ratio", label: "نسبت", type: "select", options: ["1:1"] },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].name).toBe("aspect_ratio");
+  });
+
+  it("the prompt fallback is required (so it can't be submitted empty)", () => {
+    expect(PROMPT_FIELD.required).toBe(true);
+    expect(PROMPT_FIELD.name).toBe("prompt");
   });
 });
 

@@ -20,7 +20,7 @@ import {
 } from "@/features/studio/hooks";
 import { useSchemaForm, SchemaFields } from "@/features/studio/SchemaForm";
 import {
-  normalizeSchema,
+  resolveFields,
   buildInput,
   firstMissingRequired,
 } from "@/features/studio/schemaInput";
@@ -103,10 +103,11 @@ export default function StudioPage() {
     }
   }, [catModels, selectedId]);
 
-  // Normalize once — the backend may send the schema as an array, a JSON
-  // string, or an object map. Everything downstream uses this.
+  // Resolve once — the backend may send the schema as an array, a JSON
+  // string, or an object map (or omit it). Falls back to a prompt field.
+  // Everything downstream uses this.
   const fields = useMemo(
-    () => normalizeSchema(selected?.schema),
+    () => resolveFields(selected?.schema),
     [selected]
   );
 
