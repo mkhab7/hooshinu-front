@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SchemaField } from "@/lib/types";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
 import { optionValue, normalizeSchema, defaults } from "./schemaInput";
 
 export function useSchemaForm(schema: SchemaField[] | undefined) {
@@ -53,12 +54,35 @@ function SchemaFieldInput({
   const label = `${field.label}${field.required ? " *" : ""}`;
 
   switch (field.type) {
+    case "boolean":
+      return (
+        <Switch
+          label={field.label}
+          checked={value === "true"}
+          onChange={(c) => onChange(c ? "true" : "false")}
+        />
+      );
+    case "dialogue": {
+      const voiceHint = field.voices?.length
+        ? `گویندگان: ${field.voices.map((v) => v.label.split(" — ")[0]).join("، ")}`
+        : "هر خط را در یک سطر بنویسید.";
+      return (
+        <Field label={label} hint={voiceHint}>
+          <Textarea
+            rows={6}
+            value={value}
+            required={field.required}
+            placeholder={"گوینده ۱: سلام\nگوینده ۲: حال شما؟"}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </Field>
+      );
+    }
     case "textarea":
-    case "dialogue":
       return (
         <Field label={label}>
           <Textarea
-            rows={field.type === "dialogue" ? 5 : 3}
+            rows={3}
             value={value}
             required={field.required}
             onChange={(e) => onChange(e.target.value)}
@@ -77,10 +101,7 @@ function SchemaFieldInput({
       );
     case "audio_file":
       return (
-        <Field
-          label={label}
-          hint="آدرس فایل صوتی (URL) را وارد کنید."
-        >
+        <Field label={label} hint="آدرس فایل صوتی (URL) را وارد کنید.">
           <Input
             dir="ltr"
             placeholder="https://.../audio.mp3"

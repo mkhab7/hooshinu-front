@@ -2,6 +2,14 @@
 // generation `input` payload. Kept framework-free so they're easy to test.
 import type { SchemaField, SchemaSelectOption } from "@/lib/types";
 
+/** A universal prompt field used as a fallback when a model exposes no schema. */
+export const PROMPT_FIELD: SchemaField = {
+  name: "prompt",
+  label: "توضیح (Prompt)",
+  type: "textarea",
+  required: true,
+};
+
 export function optionValue(o: SchemaSelectOption): {
   value: string;
   label: string;
@@ -34,7 +42,12 @@ export function normalizeSchema(schema: unknown): SchemaField[] {
 
   if (!raw || typeof raw !== "object") return [];
 
-  // 2) Already an array of field objects.
+  // 2) Backend wraps the list as `{ fields: [...] }` — unwrap it.
+  if (!Array.isArray(raw) && Array.isArray((raw as { fields?: unknown }).fields)) {
+    raw = (raw as { fields: unknown[] }).fields;
+  }
+
+  // 3) Array of field objects.
   if (Array.isArray(raw)) {
     return raw
       .filter(isFieldLike)
@@ -42,12 +55,27 @@ export function normalizeSchema(schema: unknown): SchemaField[] {
       .filter((f) => f.name);
   }
 
-  // 3) Object map keyed by field name → flatten to an array, using the key
-  //    as the field `name` when the entry doesn't carry its own.
+  // 4) Fallback: object map keyed by field name → flatten to an array, using
+  //    the key as the field `name` when the entry doesn't carry its own.
   return Object.entries(raw as Record<string, unknown>)
     .filter(([, v]) => v && typeof v === "object")
     .map(([key, v]) => coerceField({ name: key, ...(v as object) }))
     .filter((f) => f.name);
+}
+
+/**
+ * The fields to actually render for a model. Falls back to a single prompt
+ * field when the model exposes no usable schema, so image/video/audio models
+ * are always submittable (the backend rejects empty input with "prompt is
+ * required"). Also guarantees a prompt field exists if the schema somehow
+ * omits it.
+ */
+export function resolveFields(schema: unknown): SchemaField[] {
+  const fields = normalizeSchema(schema);
+  // No usable schema → fall back to a single required prompt field so the
+  // model stays submittable (the backend rejects empty input with
+  // "prompt is required").
+  return fields.length === 0 ? [PROMPT_FIELD] : fields;
 }
 
 function isFieldLike(v: unknown): boolean {
@@ -63,10 +91,17 @@ function coerceField(v: Record<string, unknown> | object): SchemaField {
     label: String(f.label ?? f.title ?? name),
     type: (f.type as SchemaField["type"]) ?? "text",
     required: Boolean(f.required),
+    // Booleans serialize to "true"/"false" strings for our string-based form.
     default: f.default != null ? String(f.default) : undefined,
     options: Array.isArray(f.options)
       ? (f.options as SchemaField["options"])
       : undefined,
+    voices: Array.isArray(f.voices)
+      ? (f.voices as SchemaField["voices"])
+      : undefined,
+    default_voice:
+      f.default_voice != null ? String(f.default_voice) : undefined,
+    accept: f.accept != null ? String(f.accept) : undefined,
   };
 }
 
@@ -81,13 +116,25 @@ export function defaults(schema: SchemaField[]): Record<string, string> {
   return out;
 }
 
-/** Drop empty/nullish values so we only submit meaningful input. */
+/**
+ * Build the generation `input` payload from form values. Drops empty strings
+ * and coerces boolean fields back to real booleans (the form stores them as
+ * "true"/"false" strings).
+ */
 export function buildInput(
-  values: Record<string, string>
+  values: Record<string, string>,
+  schema: SchemaField[] = []
 ): Record<string, unknown> {
+  const boolNames = new Set(
+    schema.filter((f) => f.type === "boolean").map((f) => f.name)
+  );
   const input: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(values)) {
-    if (v !== "" && v != null) input[k] = v;
+    if (boolNames.has(k)) {
+      input[k] = v === "true";
+    } else if (v !== "" && v != null) {
+      input[k] = v;
+    }
   }
   return input;
 }
@@ -97,5 +144,11 @@ export function firstMissingRequired(
   schema: SchemaField[],
   input: Record<string, unknown>
 ): SchemaField | undefined {
-  return schema.find((f) => f.required && !input[f.name]);
+  return schema.find((f) => {
+    if (!f.required) return false;
+    const v = input[f.name];
+    // Present-but-false (booleans) counts as filled; empty string / missing does not.
+    if (typeof v === "boolean") return false;
+    return v == null || v === "";
+  });
 }

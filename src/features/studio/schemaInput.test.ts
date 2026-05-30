@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   optionValue,
   normalizeSchema,
+  resolveFields,
+  PROMPT_FIELD,
   defaults,
   buildInput,
   firstMissingRequired,
@@ -34,6 +36,58 @@ describe("normalizeSchema", () => {
     expect(normalizeSchema("oops")).toEqual([]);
     expect(normalizeSchema(42)).toEqual([]);
     expect(normalizeSchema({})).toEqual([]);
+  });
+
+  it("unwraps the backend's { fields: [...] } envelope", () => {
+    const raw = {
+      fields: [
+        { name: "prompt", type: "textarea", label: "توضیح", required: true },
+        {
+          name: "aspect_ratio",
+          type: "select",
+          label: "نسبت",
+          default: "1:1",
+          options: ["1:1", "16:9"],
+        },
+      ],
+    };
+    const out = normalizeSchema(raw);
+    expect(out.map((f) => f.name)).toEqual(["prompt", "aspect_ratio"]);
+    expect(out[0]).toMatchObject({ name: "prompt", required: true });
+  });
+
+  it("parses a JSON-string of the { fields: [...] } envelope", () => {
+    const json = JSON.stringify({
+      fields: [{ name: "prompt", type: "textarea", label: "P", required: true }],
+    });
+    const out = normalizeSchema(json);
+    expect(out).toHaveLength(1);
+    expect(out[0].name).toBe("prompt");
+  });
+
+  it("preserves boolean type and dialogue voices/default_voice", () => {
+    const out = normalizeSchema({
+      fields: [
+        { name: "sound", type: "boolean", label: "صدا", default: false },
+        {
+          name: "dialogue",
+          type: "dialogue",
+          label: "گفتگو",
+          voices: [{ value: "v1", label: "James" }],
+          default_voice: "v1",
+        },
+      ],
+    });
+    expect(out[0]).toMatchObject({ name: "sound", type: "boolean", default: "false" });
+    expect(out[1].voices).toEqual([{ value: "v1", label: "James" }]);
+    expect(out[1].default_voice).toBe("v1");
+  });
+
+  it("preserves the audio_file accept hint", () => {
+    const out = normalizeSchema({
+      fields: [{ name: "audio_url", type: "audio_file", label: "فایل", accept: "audio/*" }],
+    });
+    expect(out[0].accept).toBe("audio/*");
   });
 
   it("parses a JSON-string schema (array form)", () => {
@@ -76,6 +130,28 @@ describe("normalizeSchema", () => {
   it("supports `key`/`title` aliases for name/label", () => {
     const out = normalizeSchema([{ key: "prompt", title: "متن", type: "textarea" }]);
     expect(out[0]).toMatchObject({ name: "prompt", label: "متن" });
+  });
+});
+
+describe("resolveFields", () => {
+  it("falls back to a single required prompt field when schema is empty/missing", () => {
+    expect(resolveFields(undefined)).toEqual([PROMPT_FIELD]);
+    expect(resolveFields(null)).toEqual([PROMPT_FIELD]);
+    expect(resolveFields([])).toEqual([PROMPT_FIELD]);
+    expect(resolveFields("garbage")).toEqual([PROMPT_FIELD]);
+  });
+
+  it("uses the model's own fields when present", () => {
+    const out = resolveFields([
+      { name: "aspect_ratio", label: "نسبت", type: "select", options: ["1:1"] },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].name).toBe("aspect_ratio");
+  });
+
+  it("the prompt fallback is required (so it can't be submitted empty)", () => {
+    expect(PROMPT_FIELD.required).toBe(true);
+    expect(PROMPT_FIELD.name).toBe("prompt");
   });
 });
 
@@ -131,6 +207,24 @@ describe("buildInput", () => {
       prompt: "گربه",
     });
   });
+
+  it("coerces boolean fields to real booleans", () => {
+    const schema: SchemaField[] = [
+      { name: "prompt", label: "م", type: "textarea" },
+      { name: "sound", label: "صدا", type: "boolean" },
+      { name: "instrumental", label: "ساز", type: "boolean" },
+    ];
+    expect(
+      buildInput({ prompt: "x", sound: "true", instrumental: "false" }, schema)
+    ).toEqual({ prompt: "x", sound: true, instrumental: false });
+  });
+
+  it("keeps a false boolean even though it's falsy", () => {
+    const schema: SchemaField[] = [
+      { name: "sound", label: "صدا", type: "boolean" },
+    ];
+    expect(buildInput({ sound: "false" }, schema)).toEqual({ sound: false });
+  });
 });
 
 describe("firstMissingRequired", () => {
@@ -152,5 +246,12 @@ describe("firstMissingRequired", () => {
   it("ignores optional fields", () => {
     const missing = firstMissingRequired(schema, { prompt: "x" });
     expect(missing).toBeUndefined();
+  });
+
+  it("treats a required boolean=false as present (not missing)", () => {
+    const s: SchemaField[] = [
+      { name: "agree", label: "موافقت", type: "boolean", required: true },
+    ];
+    expect(firstMissingRequired(s, { agree: false })).toBeUndefined();
   });
 });

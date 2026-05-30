@@ -53,7 +53,8 @@ export type SchemaFieldType =
   | "textarea"
   | "select"
   | "dialogue"
-  | "audio_file";
+  | "audio_file"
+  | "boolean";
 
 export type SchemaSelectOption = string | { value: string; label: string };
 
@@ -64,7 +65,23 @@ export type SchemaField = {
   required?: boolean;
   default?: string;
   options?: SchemaSelectOption[];
+  /** For `dialogue` fields: the available speaker voices. */
+  voices?: { value: string; label: string }[];
+  /** For `dialogue` fields: the default speaker voice id. */
+  default_voice?: string;
+  /** For `audio_file` fields: an accept filter hint (e.g. "audio/*"). */
+  accept?: string;
 };
+
+/**
+ * The backend wraps the field list in `{ fields: [...] }`. The raw schema can
+ * therefore be that wrapper, a bare array, a JSON string, or null.
+ */
+export type RawSchema =
+  | { fields?: unknown }
+  | SchemaField[]
+  | string
+  | null;
 
 export type AiModel = {
   id: string;
@@ -76,7 +93,7 @@ export type AiModel = {
   price: number;
   min_plan_level: number;
   locked: boolean;
-  schema?: SchemaField[];
+  schema?: RawSchema;
 };
 
 export type ModelsResponse = { object: "list"; data: AiModel[] };
