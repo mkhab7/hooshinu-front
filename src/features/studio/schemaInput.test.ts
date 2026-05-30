@@ -20,16 +20,62 @@ describe("optionValue", () => {
 });
 
 describe("normalizeSchema", () => {
-  it("returns the array as-is", () => {
-    const s: SchemaField[] = [{ name: "p", label: "P", type: "text" }];
-    expect(normalizeSchema(s)).toBe(s);
+  it("returns array fields, coerced", () => {
+    const s = [{ name: "p", label: "P", type: "text" as const }];
+    expect(normalizeSchema(s)).toEqual([
+      { name: "p", label: "P", type: "text", required: false, default: undefined, options: undefined },
+    ]);
   });
 
-  it("coerces undefined/null/non-array to an empty array", () => {
+  it("coerces undefined/null/empty/garbage to an empty array", () => {
     expect(normalizeSchema(undefined)).toEqual([]);
     expect(normalizeSchema(null)).toEqual([]);
+    expect(normalizeSchema("")).toEqual([]);
     expect(normalizeSchema("oops")).toEqual([]);
+    expect(normalizeSchema(42)).toEqual([]);
     expect(normalizeSchema({})).toEqual([]);
+  });
+
+  it("parses a JSON-string schema (array form)", () => {
+    const json = JSON.stringify([
+      { name: "prompt", label: "متن", type: "textarea", required: true },
+    ]);
+    const out = normalizeSchema(json);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ name: "prompt", type: "textarea", required: true });
+  });
+
+  it("flattens an object-map schema, using keys as field names", () => {
+    const map = {
+      prompt: { label: "متن", type: "textarea", required: true },
+      aspect_ratio: { label: "نسبت", type: "select", options: ["1:1", "16:9"] },
+    };
+    const out = normalizeSchema(map);
+    expect(out.map((f) => f.name).sort()).toEqual(["aspect_ratio", "prompt"]);
+    const ar = out.find((f) => f.name === "aspect_ratio")!;
+    expect(ar.options).toEqual(["1:1", "16:9"]);
+  });
+
+  it("parses a JSON-string schema (object-map form)", () => {
+    const json = JSON.stringify({ prompt: { label: "P", type: "text" } });
+    const out = normalizeSchema(json);
+    expect(out).toHaveLength(1);
+    expect(out[0].name).toBe("prompt");
+  });
+
+  it("defaults a missing field type to text and label to the name", () => {
+    const out = normalizeSchema([{ name: "seed" }]);
+    expect(out[0]).toMatchObject({ name: "seed", label: "seed", type: "text" });
+  });
+
+  it("drops entries that have no resolvable name", () => {
+    const out = normalizeSchema([{ label: "no name", type: "text" }]);
+    expect(out).toEqual([]);
+  });
+
+  it("supports `key`/`title` aliases for name/label", () => {
+    const out = normalizeSchema([{ key: "prompt", title: "متن", type: "textarea" }]);
+    expect(out[0]).toMatchObject({ name: "prompt", label: "متن" });
   });
 });
 

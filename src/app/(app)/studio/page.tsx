@@ -103,7 +103,14 @@ export default function StudioPage() {
     }
   }, [catModels, selectedId]);
 
-  const form = useSchemaForm(selected?.schema);
+  // Normalize once — the backend may send the schema as an array, a JSON
+  // string, or an object map. Everything downstream uses this.
+  const fields = useMemo(
+    () => normalizeSchema(selected?.schema),
+    [selected]
+  );
+
+  const form = useSchemaForm(fields);
   // Reset form values when switching models.
   useEffect(() => {
     form.reset();
@@ -120,10 +127,7 @@ export default function StudioPage() {
       return;
     }
     const input = buildInput(form.values);
-    const missing = firstMissingRequired(
-      normalizeSchema(selected.schema),
-      input
-    );
+    const missing = firstMissingRequired(fields, input);
     if (missing) {
       toast.error(`فیلد «${missing.label}» الزامی است.`);
       return;
@@ -142,8 +146,7 @@ export default function StudioPage() {
     activeTask &&
     ["pending", "queued", "processing"].includes(activeTask.status);
 
-  const hasSchema =
-    Array.isArray(selected?.schema) && selected!.schema!.length > 0;
+  const hasSchema = fields.length > 0;
 
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-8">
@@ -257,7 +260,7 @@ export default function StudioPage() {
                     </div>
                   ) : hasSchema ? (
                     <SchemaFields
-                      schema={selected.schema!}
+                      schema={fields}
                       values={form.values}
                       onChange={form.set}
                     />
