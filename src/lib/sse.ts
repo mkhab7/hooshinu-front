@@ -37,9 +37,14 @@ async function readSSE(
         const line = rawLine.replace(/^data: ?/, "").trim();
         if (!line || line === "[DONE]") continue;
         try {
-          const chunk = JSON.parse(line) as ChatCompletionChunk;
-          const delta = chunk.choices?.[0]?.delta?.content;
-          if (delta) onDelta(delta);
+          const v: unknown = JSON.parse(line);
+          // Path A (relay) → bare JSON-encoded string token;
+          // Path B (direct) → OpenAI chat.completion.chunk object.
+          const delta =
+            typeof v === "string"
+              ? v
+              : (v as ChatCompletionChunk)?.choices?.[0]?.delta?.content;
+          if (typeof delta === "string" && delta) onDelta(delta);
         } catch {
           /* ignore non-JSON keep-alive lines */
         }
