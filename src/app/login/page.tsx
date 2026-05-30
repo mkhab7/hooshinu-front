@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { Sparkles, ArrowLeft, Languages } from "lucide-react";
 import { useAuthStore } from "@/lib/auth";
 import { useRequestOtp, useVerifyOtp } from "@/features/auth/hooks";
 import { HooshinuError } from "@/lib/api";
+import { useT, useI18nStore } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { Input, Field } from "@/components/ui/Input";
 import { Toaster, useToast } from "@/components/ui/Toast";
@@ -16,6 +17,8 @@ export default function LoginPage() {
   const router = useRouter();
   const toast = useToast();
   const { hydrated, isAuthed } = useAuthStore();
+  const { t, locale } = useT();
+  const setLocale = useI18nStore((s) => s.setLocale);
 
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
@@ -39,7 +42,7 @@ export default function LoginPage() {
   async function submitPhone(e: React.FormEvent) {
     e.preventDefault();
     if (!PHONE_RE.test(phone)) {
-      toast.error("شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد.");
+      toast.error(t("login.invalidPhone"));
       return;
     }
     try {
@@ -47,7 +50,7 @@ export default function LoginPage() {
       setStep("code");
       setCooldown(60);
       setTimeout(() => codeRef.current?.focus(), 100);
-      toast.success("کد تأیید ارسال شد.");
+      toast.success(t("login.codeSent"));
     } catch (err) {
       const e2 = err as HooshinuError;
       if (e2.status === 429 && e2.retryAfter) setCooldown(e2.retryAfter);
@@ -58,7 +61,7 @@ export default function LoginPage() {
   async function submitCode(e: React.FormEvent) {
     e.preventDefault();
     if (code.trim().length < 4) {
-      toast.error("کد تأیید را کامل وارد کنید.");
+      toast.error(t("login.enterFullCode"));
       return;
     }
     try {
@@ -74,7 +77,7 @@ export default function LoginPage() {
     try {
       await requestOtp.mutateAsync(phone);
       setCooldown(60);
-      toast.success("کد مجدداً ارسال شد.");
+      toast.success(t("login.codeResent"));
     } catch (err) {
       const e2 = err as HooshinuError;
       if (e2.status === 429 && e2.retryAfter) setCooldown(e2.retryAfter);
@@ -90,23 +93,29 @@ export default function LoginPage() {
         <div className="animate-blob absolute bottom-0 start-1/4 size-80 rounded-full bg-violet-500/20 blur-3xl [animation-delay:3s]" />
       </div>
       <Toaster />
+      <button
+        type="button"
+        onClick={() => setLocale(locale === "fa" ? "en" : "fa")}
+        className="glass absolute top-4 end-4 flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+      >
+        <Languages className="size-4" />
+        {locale === "fa" ? "EN" : "فا"}
+      </button>
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="animate-blob mb-4 flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-400 to-violet-600 text-white shadow-2xl shadow-brand-600/40">
             <Sparkles className="size-8" />
           </div>
           <h1 className="bg-gradient-to-l from-brand-500 to-violet-500 bg-clip-text text-3xl font-extrabold text-transparent">
-            هوشینو
+            {t("common.appName")}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
-            پلتفرم هوش مصنوعی فارسی — ورود با شماره موبایل
-          </p>
+          <p className="mt-2 text-sm text-gray-500">{t("login.subtitle")}</p>
         </div>
 
         <div className="glass rounded-3xl p-6 shadow-2xl shadow-black/10">
           {step === "phone" ? (
             <form onSubmit={submitPhone} className="space-y-4">
-              <Field label="شماره موبایل">
+              <Field label={t("login.phoneLabel")}>
                 <Input
                   type="tel"
                   inputMode="numeric"
@@ -126,7 +135,7 @@ export default function LoginPage() {
                 className="w-full"
                 loading={requestOtp.isPending}
               >
-                دریافت کد تأیید
+                {t("login.getCode")}
               </Button>
             </form>
           ) : (
@@ -136,17 +145,13 @@ export default function LoginPage() {
                 onClick={() => setStep("phone")}
                 className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
               >
-                <ArrowLeft className="size-4" />
-                ویرایش شماره
+                <ArrowLeft className="size-4 rtl:rotate-180" />
+                {t("login.editPhone")}
               </button>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                کد ارسال‌شده به{" "}
-                <span dir="ltr" className="font-medium">
-                  {phone}
-                </span>{" "}
-                را وارد کنید.
+                {t("login.codeSentTo", { phone })}
               </p>
-              <Field label="کد تأیید">
+              <Field label={t("login.codeLabel")}>
                 <Input
                   ref={codeRef}
                   inputMode="numeric"
@@ -165,7 +170,7 @@ export default function LoginPage() {
                 className="w-full"
                 loading={verifyOtp.isPending}
               >
-                ورود
+                {t("login.enter")}
               </Button>
               <button
                 type="button"
@@ -174,15 +179,15 @@ export default function LoginPage() {
                 className="w-full text-center text-sm text-brand-500 hover:underline disabled:text-gray-400 disabled:no-underline"
               >
                 {cooldown > 0
-                  ? `ارسال مجدد کد تا ${cooldown} ثانیه دیگر`
-                  : "ارسال مجدد کد"}
+                  ? t("login.resendIn", { sec: cooldown })
+                  : t("login.resend")}
               </button>
             </form>
           )}
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          با ورود، شرایط استفاده و حریم خصوصی هوشینو را می‌پذیرید.
+          {t("login.terms")}
         </p>
       </div>
     </main>

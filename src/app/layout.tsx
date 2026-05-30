@@ -3,9 +3,9 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "هوشینو | پلتفرم هوش مصنوعی",
+  title: "هوشینو | Hooshinu — AI Platform",
   description:
-    "گفتگو با مدل‌های هوش مصنوعی، تولید تصویر و ویدیو، کیف پول اعتباری و اشتراک‌ها.",
+    "گفتگو با مدل‌های هوش مصنوعی، تولید تصویر و ویدیو، کیف پول اعتباری و اشتراک‌ها. Chat with AI models, generate media, and manage your credit wallet.",
 };
 
 export const viewport: Viewport = {
@@ -27,10 +27,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/vazirmatn@33.003/Vazirmatn-font-face.css"
         />
-        {/* Apply stored theme before paint to avoid a flash. */}
+        {/* Apply stored theme + locale (dir/lang) before paint to avoid a flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('hooshinu.theme');document.documentElement.classList.toggle('dark', t!== 'light');}catch(e){}})();`,
+            __html: `(function(){try{var d=document.documentElement;var t=localStorage.getItem('hooshinu.theme');d.classList.toggle('dark', t!=='light');var l=localStorage.getItem('hooshinu.locale')==='en'?'en':'fa';d.lang=l;d.dir=l==='fa'?'rtl':'ltr';}catch(e){}})();`,
           }}
         />
       </head>

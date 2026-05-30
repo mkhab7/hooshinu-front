@@ -16,6 +16,7 @@ import { Card, Badge, Spinner, EmptyState } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import { HooshinuError } from "@/lib/api";
 import {
   cn,
@@ -27,19 +28,21 @@ import type { TransactionType, PaymentStatus } from "@/lib/types";
 
 const PRESETS = [50000, 100000, 200000, 500000];
 
-const TX_LABEL: Record<TransactionType, string> = {
-  topup: "شارژ",
-  usage: "مصرف",
-  refund: "بازگشت",
-  bonus: "هدیه",
+const TX_KEY: Record<TransactionType, TranslationKey> = {
+  topup: "tx.topup",
+  usage: "tx.usage",
+  refund: "tx.refund",
+  bonus: "tx.bonus",
 };
 
-const PAY_LABEL: Record<PaymentStatus, { label: string; color: "green" | "yellow" | "red" }> =
-  {
-    paid: { label: "پرداخت‌شده", color: "green" },
-    pending: { label: "در انتظار", color: "yellow" },
-    failed: { label: "ناموفق", color: "red" },
-  };
+const PAY_META: Record<
+  PaymentStatus,
+  { key: TranslationKey; color: "green" | "yellow" | "red" }
+> = {
+  paid: { key: "pay.paid", color: "green" },
+  pending: { key: "pay.pending", color: "yellow" },
+  failed: { key: "pay.failed", color: "red" },
+};
 
 export default function WalletPage() {
   const toast = useToast();
@@ -51,6 +54,7 @@ export default function WalletPage() {
   const { data: payments } = usePayments();
   const topUp = useTopUp();
   const purchase = usePurchasePlan();
+  const { t } = useT();
 
   const [amount, setAmount] = useState(100000);
 
@@ -63,7 +67,7 @@ export default function WalletPage() {
 
   async function doTopUp() {
     if (amount < 1000) {
-      toast.error("حداقل مبلغ شارژ ۱۰۰۰ تومان است.");
+      toast.error(t("wallet.minAmount"));
       return;
     }
     try {
@@ -85,7 +89,7 @@ export default function WalletPage() {
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-8">
-      <PageHeader title="کیف پول" description="اعتبار، شارژ و اشتراک‌ها" />
+      <PageHeader title={t("wallet.title")} description={t("wallet.subtitle")} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         {/* Balance + top-up */}
@@ -95,7 +99,7 @@ export default function WalletPage() {
             <div className="relative">
               <div className="flex items-center gap-2 text-brand-100">
                 <Coins className="size-5" />
-                <span className="text-sm">اعتبار فعلی</span>
+                <span className="text-sm">{t("wallet.currentCredit")}</span>
               </div>
               <p className="mt-2 text-4xl font-bold tabular-nums">
                 {walletLoading ? "…" : formatCredits(wallet?.credits)}
@@ -104,7 +108,7 @@ export default function WalletPage() {
           </Card>
 
           <Card>
-            <h3 className="mb-3 font-semibold">افزایش اعتبار</h3>
+            <h3 className="mb-3 font-semibold">{t("wallet.topUp")}</h3>
             <div className="mb-3 grid grid-cols-2 gap-2">
               {PRESETS.map((p) => (
                 <button
@@ -137,10 +141,10 @@ export default function WalletPage() {
               onClick={doTopUp}
             >
               <ArrowDownToLine className="size-4" />
-              پرداخت و شارژ
+              {t("wallet.pay")}
             </Button>
             <p className="mt-2 text-center text-xs text-gray-500">
-              پرداخت از طریق درگاه (زرین‌پال) انجام می‌شود.
+              {t("wallet.gatewayNote")}
             </p>
           </Card>
         </div>
@@ -150,14 +154,14 @@ export default function WalletPage() {
           <Card>
             <h3 className="mb-3 flex items-center gap-2 font-semibold">
               <Crown className="size-5 text-amber-500" />
-              اشتراک‌ها
+              {t("wallet.plans")}
             </h3>
             {!plans ? (
               <div className="py-8 text-center">
                 <Spinner className="text-brand-500" />
               </div>
             ) : plans.length === 0 ? (
-              <EmptyState title="پلنی موجود نیست" />
+              <EmptyState title={t("wallet.noPlans")} />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {plans.map((plan) => {
@@ -174,7 +178,7 @@ export default function WalletPage() {
                     >
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold">{plan.name}</h4>
-                        {current && <Badge color="brand">فعال</Badge>}
+                        {current && <Badge color="brand">{t("wallet.planActive")}</Badge>}
                       </div>
                       <p className="mt-2 text-2xl font-bold">
                         {formatToman(plan.price_toman)}
@@ -182,15 +186,17 @@ export default function WalletPage() {
                       <ul className="mt-3 space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
                         <li className="flex items-center gap-2">
                           <Check className="size-4 text-green-500" />
-                          {formatCredits(plan.credits)} اعتبار
+                          {t("wallet.planCredits", {
+                            credits: formatCredits(plan.credits),
+                          })}
                         </li>
                         <li className="flex items-center gap-2">
                           <Check className="size-4 text-green-500" />
-                          {plan.duration_days} روز اعتبار
+                          {t("wallet.planDuration", { days: plan.duration_days })}
                         </li>
                         <li className="flex items-center gap-2">
                           <Check className="size-4 text-green-500" />
-                          سطح دسترسی {plan.level}
+                          {t("wallet.planLevel", { level: plan.level })}
                         </li>
                       </ul>
                       <Button
@@ -200,7 +206,7 @@ export default function WalletPage() {
                         disabled={current || purchase.isPending}
                         onClick={() => buyPlan(plan.id)}
                       >
-                        {current ? "اشتراک فعلی" : "خرید"}
+                        {current ? t("wallet.currentPlan") : t("wallet.buy")}
                       </Button>
                     </div>
                   );
@@ -213,57 +219,57 @@ export default function WalletPage() {
 
       {/* Transactions */}
       <Card className="mt-6">
-        <h3 className="mb-3 font-semibold">تراکنش‌ها</h3>
+        <h3 className="mb-3 font-semibold">{t("wallet.transactions")}</h3>
         {!wallet ? (
           <div className="py-8 text-center">
             <Spinner className="text-brand-500" />
           </div>
         ) : wallet.transactions.length === 0 ? (
-          <EmptyState title="هنوز تراکنشی ندارید" />
+          <EmptyState title={t("wallet.noTransactions")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-start text-xs text-gray-500">
                 <tr className="border-b border-gray-200 dark:border-white/10">
-                  <th className="py-2 text-start font-medium">نوع</th>
-                  <th className="py-2 text-start font-medium">مقدار</th>
-                  <th className="py-2 text-start font-medium">موجودی پس از</th>
-                  <th className="py-2 text-start font-medium">تاریخ</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colType")}</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colAmount")}</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colBalanceAfter")}</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colDate")}</th>
                 </tr>
               </thead>
               <tbody>
-                {wallet.transactions.map((t) => (
+                {wallet.transactions.map((tx) => (
                   <tr
-                    key={t.id}
+                    key={tx.id}
                     className="border-b border-gray-100 last:border-0 dark:border-white/5"
                   >
                     <td className="py-2.5">
                       <Badge
                         color={
-                          t.type === "usage"
+                          tx.type === "usage"
                             ? "red"
-                            : t.type === "bonus"
+                            : tx.type === "bonus"
                               ? "brand"
                               : "green"
                         }
                       >
-                        {TX_LABEL[t.type]}
+                        {t(TX_KEY[tx.type])}
                       </Badge>
                     </td>
                     <td
                       className={cn(
                         "py-2.5 tabular-nums",
-                        t.credits < 0 ? "text-red-500" : "text-green-600"
+                        tx.credits < 0 ? "text-red-500" : "text-green-600"
                       )}
                     >
-                      {t.credits > 0 ? "+" : ""}
-                      {formatCredits(t.credits)}
+                      {tx.credits > 0 ? "+" : ""}
+                      {formatCredits(tx.credits)}
                     </td>
                     <td className="py-2.5 tabular-nums text-gray-500">
-                      {formatCredits(t.balance_after)}
+                      {formatCredits(tx.balance_after)}
                     </td>
                     <td className="py-2.5 text-xs text-gray-500">
-                      {formatDateTime(t.created_at)}
+                      {formatDateTime(tx.created_at)}
                     </td>
                   </tr>
                 ))}
@@ -276,15 +282,15 @@ export default function WalletPage() {
       {/* Payments */}
       {payments && payments.length > 0 && (
         <Card className="mt-6">
-          <h3 className="mb-3 font-semibold">پرداخت‌ها</h3>
+          <h3 className="mb-3 font-semibold">{t("wallet.payments")}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs text-gray-500">
                 <tr className="border-b border-gray-200 dark:border-white/10">
-                  <th className="py-2 text-start font-medium">مبلغ</th>
-                  <th className="py-2 text-start font-medium">اعتبار</th>
-                  <th className="py-2 text-start font-medium">وضعیت</th>
-                  <th className="py-2 text-start font-medium">تاریخ</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colAmount")}</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colCredits")}</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colStatus")}</th>
+                  <th className="py-2 text-start font-medium">{t("wallet.colDate")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -298,8 +304,8 @@ export default function WalletPage() {
                       {formatCredits(p.credits)}
                     </td>
                     <td className="py-2.5">
-                      <Badge color={PAY_LABEL[p.status].color}>
-                        {PAY_LABEL[p.status].label}
+                      <Badge color={PAY_META[p.status].color}>
+                        {t(PAY_META[p.status].key)}
                       </Badge>
                     </td>
                     <td className="py-2.5 text-xs text-gray-500">

@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useModelsByCategory } from "@/features/models/hooks";
 import { streamChatCompletion } from "@/lib/sse";
-import { useMe } from "@/features/profile/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
   ChatCompletionMessage,
@@ -28,6 +27,7 @@ import { Textarea } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
+import { useT, type TFunction } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type UIMessage = {
@@ -40,7 +40,7 @@ export default function ChatPage() {
   const { data: textModels, isLoading } = useModelsByCategory("text");
   const toast = useToast();
   const qc = useQueryClient();
-  const { data: me } = useMe();
+  const { t } = useT();
 
   const [model, setModel] = useState<string>("");
   const [messages, setMessages] = useState<UIMessage[]>([]);
@@ -165,18 +165,18 @@ export default function ChatPage() {
           onChange={setModel}
           disabled={isLoading}
           className="max-w-xs"
-          placeholder={isLoading ? "در حال بارگذاری…" : "انتخاب مدل"}
+          placeholder={isLoading ? t("common.loading") : t("chat.selectModel")}
           options={(textModels ?? []).map((m) => ({
             value: m.id,
             label: m.name,
             disabled: m.locked,
-            hint: m.locked ? "نیازمند ارتقای پلن" : undefined,
+            hint: m.locked ? t("chat.modelLockedHint") : undefined,
           }))}
         />
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={newChat}>
           <MessageSquarePlus className="size-4" />
-          گفتگوی جدید
+          {t("chat.newChat")}
         </Button>
       </div>
 
@@ -188,10 +188,9 @@ export default function ChatPage() {
               <div className="animate-blob mb-5 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-400 to-violet-600 text-white shadow-2xl shadow-brand-600/40">
                 <Sparkles className="size-10" />
               </div>
-              <h2 className="text-2xl font-bold">گفتگو را شروع کنید</h2>
+              <h2 className="text-2xl font-bold">{t("chat.startTitle")}</h2>
               <p className="mt-2 max-w-md text-sm text-gray-500">
-                سؤالتان را بنویسید. تاریخچهٔ این گفتگو به‌صورت محلی نگه داشته
-                می‌شود (حالت استریم، بدون ذخیره روی سرور).
+                {t("chat.startHint")}
               </p>
             </div>
           ) : (
@@ -200,6 +199,7 @@ export default function ChatPage() {
                 <MessageBubble
                   key={i}
                   msg={m}
+                  t={t}
                   streaming={
                     streaming &&
                     i === messages.length - 1 &&
@@ -247,7 +247,7 @@ export default function ChatPage() {
                 }
               }}
               rows={1}
-              placeholder="پیام خود را بنویسید…"
+              placeholder={t("chat.placeholder")}
               className="max-h-40 min-h-[2.5rem] flex-1 border-0 bg-transparent focus:ring-0 dark:bg-transparent"
               maxLength={8000}
             />
@@ -259,7 +259,7 @@ export default function ChatPage() {
                 className="shrink-0"
               >
                 <Square className="size-4" />
-                توقف
+                {t("chat.stop")}
               </Button>
             ) : (
               <Button
@@ -267,7 +267,7 @@ export default function ChatPage() {
                 onClick={send}
                 disabled={!input.trim() || !model}
                 className="shrink-0"
-                aria-label="ارسال"
+                aria-label={t("chat.send")}
               >
                 <Send className="size-4" />
               </Button>
@@ -279,13 +279,13 @@ export default function ChatPage() {
               active={webSearch}
               onClick={() => setWebSearch((v) => !v)}
               icon={<Globe className="size-4" />}
-              label="جستجوی وب"
+              label={t("chat.webSearch")}
             />
             <Toggle
               active={showImageField}
               onClick={() => setShowImageField((v) => !v)}
               icon={<ImagePlus className="size-4" />}
-              label="تصویر"
+              label={t("chat.image")}
             />
             <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 dark:border-white/[0.06] dark:bg-white/[0.04]">
               <Brain className="size-4 text-gray-400" />
@@ -296,11 +296,11 @@ export default function ChatPage() {
                 }
                 className="cursor-pointer bg-transparent text-xs font-medium outline-none dark:[&>option]:bg-surface-3"
               >
-                <option value="">استدلال: پیش‌فرض</option>
-                <option value="low">کم</option>
-                <option value="medium">متوسط</option>
-                <option value="high">زیاد</option>
-                <option value="xhigh">خیلی زیاد</option>
+                <option value="">{t("chat.reasoningDefault")}</option>
+                <option value="low">{t("chat.reasoningLow")}</option>
+                <option value="medium">{t("chat.reasoningMedium")}</option>
+                <option value="high">{t("chat.reasoningHigh")}</option>
+                <option value="xhigh">{t("chat.reasoningXhigh")}</option>
               </select>
             </div>
           </div>
@@ -341,9 +341,11 @@ function Toggle({
 function MessageBubble({
   msg,
   streaming,
+  t,
 }: {
   msg: UIMessage;
   streaming: boolean;
+  t: TFunction;
 }) {
   const isUser = msg.role === "user";
   return (
@@ -372,7 +374,7 @@ function MessageBubble({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={msg.imageUrl}
-            alt="پیوست تصویر"
+            alt={t("chat.imageAlt")}
             className="mb-2 max-h-60 rounded-lg"
           />
         )}

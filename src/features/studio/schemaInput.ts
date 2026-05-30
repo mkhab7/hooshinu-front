@@ -70,12 +70,18 @@ export function normalizeSchema(schema: unknown): SchemaField[] {
  * required"). Also guarantees a prompt field exists if the schema somehow
  * omits it.
  */
-export function resolveFields(schema: unknown): SchemaField[] {
+export function resolveFields(
+  schema: unknown,
+  promptLabel?: string
+): SchemaField[] {
   const fields = normalizeSchema(schema);
   // No usable schema → fall back to a single required prompt field so the
   // model stays submittable (the backend rejects empty input with
   // "prompt is required").
-  return fields.length === 0 ? [PROMPT_FIELD] : fields;
+  if (fields.length === 0) {
+    return [{ ...PROMPT_FIELD, label: promptLabel ?? PROMPT_FIELD.label }];
+  }
+  return fields;
 }
 
 function isFieldLike(v: unknown): boolean {

@@ -29,6 +29,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, Badge, Skeleton, EmptyState } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { useT, type TranslationKey, type TFunction } from "@/lib/i18n";
 import { HooshinuError } from "@/lib/api";
 import { cn, formatCredits, relativeFromNow } from "@/lib/utils";
 import type { AiModel, ModelCategory } from "@/lib/types";
@@ -37,24 +38,24 @@ type MediaCategory = Exclude<ModelCategory, "text">;
 
 const CAT_META: Record<
   MediaCategory,
-  { label: string; icon: typeof ImageIcon }
+  { key: TranslationKey; icon: typeof ImageIcon }
 > = {
-  image: { label: "تصویر", icon: ImageIcon },
-  video: { label: "ویدیو", icon: Video },
-  audio: { label: "صدا", icon: Music },
+  image: { key: "studio.catImage", icon: ImageIcon },
+  video: { key: "studio.catVideo", icon: Video },
+  audio: { key: "studio.catAudio", icon: Music },
 };
 
 const ALL_CATS: MediaCategory[] = ["image", "video", "audio"];
 
 const STATUS_META: Record<
   string,
-  { label: string; color: "green" | "yellow" | "red" | "gray" }
+  { key: TranslationKey; color: "green" | "yellow" | "red" | "gray" }
 > = {
-  success: { label: "موفق", color: "green" },
-  failed: { label: "ناموفق", color: "red" },
-  processing: { label: "در حال پردازش", color: "yellow" },
-  queued: { label: "در صف", color: "yellow" },
-  pending: { label: "در انتظار", color: "gray" },
+  success: { key: "status.success", color: "green" },
+  failed: { key: "status.failed", color: "red" },
+  processing: { key: "status.processing", color: "yellow" },
+  queued: { key: "status.queued", color: "yellow" },
+  pending: { key: "status.pending", color: "gray" },
 };
 
 export default function StudioPage() {
@@ -62,6 +63,7 @@ export default function StudioPage() {
   const toast = useToast();
   const createGen = useCreateGeneration();
   const { data: history } = useGenerations();
+  const { t } = useT();
 
   const [category, setCategory] = useState<MediaCategory>("image");
   const [selectedId, setSelectedId] = useState<string>("");
@@ -107,8 +109,8 @@ export default function StudioPage() {
   // string, or an object map (or omit it). Falls back to a prompt field.
   // Everything downstream uses this.
   const fields = useMemo(
-    () => resolveFields(selected?.schema),
-    [selected]
+    () => resolveFields(selected?.schema, t("studio.promptFieldLabel")),
+    [selected, t]
   );
 
   const form = useSchemaForm(fields);
@@ -124,20 +126,20 @@ export default function StudioPage() {
     e.preventDefault();
     if (!selected) return;
     if (selected.locked) {
-      toast.error("این مدل با پلن فعلی شما در دسترس نیست.");
+      toast.error(t("studio.modelUnavailable"));
       return;
     }
     const input = buildInput(form.values, fields);
     const missing = firstMissingRequired(fields, input);
     if (missing) {
-      toast.error(`فیلد «${missing.label}» الزامی است.`);
+      toast.error(t("studio.fieldRequired", { field: missing.label }));
       return;
     }
 
     try {
       const task = await createGen.mutateAsync({ model: selected.id, input });
       setActiveTaskId(task.id);
-      toast.success("درخواست تولید ثبت شد.");
+      toast.success(t("studio.requestQueued"));
     } catch (err) {
       toast.error((err as HooshinuError).message);
     }
@@ -155,19 +157,19 @@ export default function StudioPage() {
         title={
           <span className="inline-flex items-center gap-2">
             <span className="bg-gradient-to-l from-brand-500 to-violet-500 bg-clip-text text-transparent">
-              استودیو
+              {t("studio.title")}
             </span>
             <Sparkles className="size-5 text-brand-500" />
           </span>
         }
-        description="تولید تصویر، ویدیو و صدا با مدل‌های هوش مصنوعی"
+        description={t("studio.subtitle")}
       />
 
       {/* Category tabs */}
       {availableCats.length > 1 && (
         <div className="mb-6 inline-flex rounded-2xl border border-gray-200 bg-gray-50 p-1 dark:border-white/[0.06] dark:bg-white/[0.03]">
           {availableCats.map((c) => {
-            const { label, icon: Icon } = CAT_META[c];
+            const { key, icon: Icon } = CAT_META[c];
             const active = c === category;
             return (
               <button
@@ -181,7 +183,7 @@ export default function StudioPage() {
                 )}
               >
                 <Icon className="size-4" />
-                {label}
+                {t(key)}
               </button>
             );
           })}
@@ -196,7 +198,7 @@ export default function StudioPage() {
           <div className="space-y-4">
             <Card>
               <label className="mb-3 block text-sm font-medium">
-                انتخاب مدل
+                {t("studio.selectModel")}
               </label>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {catModels.map((m) => {
@@ -255,8 +257,9 @@ export default function StudioPage() {
                     <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                       <Lock className="mt-0.5 size-4 shrink-0" />
                       <span>
-                        این مدل به پلن سطح {selected.min_plan_level} یا بالاتر نیاز
-                        دارد. برای دسترسی، پلن خود را ارتقا دهید.
+                        {t("studio.modelLocked", {
+                          level: selected.min_plan_level,
+                        })}
                       </span>
                     </div>
                   ) : hasSchema ? (
@@ -264,10 +267,11 @@ export default function StudioPage() {
                       schema={fields}
                       values={form.values}
                       onChange={form.set}
+                      t={t}
                     />
                   ) : (
                     <p className="text-sm text-gray-500">
-                      این مدل فیلد ورودی مشخصی ندارد.
+                      {t("studio.noInputs")}
                     </p>
                   )}
 
@@ -279,7 +283,7 @@ export default function StudioPage() {
                     disabled={selected.locked || !!busy}
                   >
                     <Wand2 className="size-4" />
-                    {busy ? "در حال تولید…" : "تولید کن"}
+                    {busy ? t("studio.generating") : t("studio.generate")}
                   </Button>
                 </form>
               </Card>
@@ -291,24 +295,22 @@ export default function StudioPage() {
             <Card className="overflow-hidden">
               <h3 className="mb-3 flex items-center gap-2 font-semibold">
                 <Sparkles className="size-4 text-brand-500" />
-                نتیجه
+                {t("studio.result")}
               </h3>
               {!activeTask ? (
                 <EmptyState
                   icon={<Wand2 className="size-7" />}
-                  title="هنوز چیزی تولید نشده"
-                  description="یک مدل انتخاب کنید، فرم را پر کنید و دکمهٔ تولید را بزنید."
+                  title={t("studio.noResultTitle")}
+                  description={t("studio.noResultHint")}
                 />
               ) : busy ? (
-                <GeneratingState status={activeTask.status} />
+                <GeneratingState status={activeTask.status} t={t} />
               ) : activeTask.status === "failed" ? (
                 <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                   <span>
-                    تولید ناموفق بود
-                    {activeTask.fail_reason
-                      ? `: ${activeTask.fail_reason}`
-                      : "."}
+                    {t("studio.failed")}
+                    {activeTask.fail_reason ? `: ${activeTask.fail_reason}` : "."}
                   </span>
                 </div>
               ) : (
@@ -317,7 +319,9 @@ export default function StudioPage() {
                   {activeTask.credits_cost != null && (
                     <p className="flex items-center gap-1.5 text-xs text-gray-500">
                       <Coins className="size-3.5" />
-                      هزینه: {formatCredits(activeTask.credits_cost)} اعتبار
+                      {t("studio.cost", {
+                        cost: formatCredits(activeTask.credits_cost),
+                      })}
                     </p>
                   )}
                 </div>
@@ -328,7 +332,7 @@ export default function StudioPage() {
               <Card>
                 <h3 className="mb-3 flex items-center gap-2 font-semibold">
                   <Clock className="size-4 text-gray-400" />
-                  تاریخچه
+                  {t("studio.history")}
                 </h3>
                 <ul className="space-y-1">
                   {history.slice(0, 10).map((g) => {
@@ -350,7 +354,7 @@ export default function StudioPage() {
                             <span className="text-xs text-gray-400">
                               {relativeFromNow(g.created_at)}
                             </span>
-                            <Badge color={meta.color}>{meta.label}</Badge>
+                            <Badge color={meta.color}>{t(meta.key)}</Badge>
                           </span>
                         </button>
                       </li>
@@ -366,7 +370,7 @@ export default function StudioPage() {
   );
 }
 
-function GeneratingState({ status }: { status: string }) {
+function GeneratingState({ status, t }: { status: string; t: TFunction }) {
   const meta = STATUS_META[status] ?? STATUS_META.pending;
   return (
     <div className="flex flex-col items-center gap-4 py-12">
@@ -377,8 +381,10 @@ function GeneratingState({ status }: { status: string }) {
         </span>
       </div>
       <div className="text-center">
-        <p className="font-medium">در حال تولید…</p>
-        <p className="mt-1 text-sm text-gray-500">وضعیت: {meta.label}</p>
+        <p className="font-medium">{t("studio.generating")}</p>
+        <p className="mt-1 text-sm text-gray-500">
+          {t("studio.statusValue", { status: t(meta.key) })}
+        </p>
       </div>
     </div>
   );
