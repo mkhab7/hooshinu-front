@@ -19,12 +19,14 @@ function defaults(schema: SchemaField[]): Record<string, string> {
 }
 
 export function useSchemaForm(schema: SchemaField[] | undefined) {
+  // The backend may omit `schema` or send a non-array value, so normalize.
+  const fields = Array.isArray(schema) ? schema : [];
   const [values, setValues] = useState<Record<string, string>>(() =>
-    schema ? defaults(schema) : {}
+    defaults(fields)
   );
   const set = (name: string, value: string) =>
     setValues((v) => ({ ...v, [name]: value }));
-  const reset = () => setValues(schema ? defaults(schema) : {});
+  const reset = () => setValues(defaults(fields));
   return { values, set, reset };
 }
 

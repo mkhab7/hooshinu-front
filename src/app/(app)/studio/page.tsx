@@ -75,9 +75,8 @@ export default function StudioPage() {
       if (v !== "" && v != null) input[k] = v;
     }
     // Validate required fields.
-    const missing = (selected.schema ?? []).find(
-      (f) => f.required && !input[f.name]
-    );
+    const schemaFields = Array.isArray(selected.schema) ? selected.schema : [];
+    const missing = schemaFields.find((f) => f.required && !input[f.name]);
     if (missing) {
       toast.error(`فیلد «${missing.label}» الزامی است.`);
       return;
@@ -156,7 +155,8 @@ export default function StudioPage() {
                       این مدل به پلن سطح {selected.min_plan_level} یا بالاتر نیاز
                       دارد.
                     </div>
-                  ) : selected.schema && selected.schema.length ? (
+                  ) : Array.isArray(selected.schema) &&
+                    selected.schema.length ? (
                     <SchemaFields
                       schema={selected.schema}
                       values={form.values}
