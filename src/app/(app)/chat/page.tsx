@@ -12,6 +12,7 @@ import {
   ImagePlus,
   X,
   User,
+  MessageSquarePlus,
 } from "lucide-react";
 import { useModelsByCategory } from "@/features/models/hooks";
 import { streamChatCompletion } from "@/lib/sse";
@@ -23,7 +24,8 @@ import type {
   ChatContentPart,
 } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { Textarea, Select } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -155,25 +157,25 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col md:h-screen">
+    <div className="flex h-[calc(100vh-3.75rem)] flex-col md:h-screen">
       {/* Top bar */}
-      <div className="flex items-center gap-3 border-b border-gray-200 bg-white/60 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-white/[0.02]">
+      <div className="flex items-center gap-3 border-b border-gray-200 bg-white/60 px-4 py-3 backdrop-blur-xl dark:border-white/[0.06] dark:bg-surface-1/50">
         <Select
           value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="max-w-xs"
+          onChange={setModel}
           disabled={isLoading}
-        >
-          {isLoading && <option>در حال بارگذاری…</option>}
-          {textModels?.map((m) => (
-            <option key={m.id} value={m.id} disabled={m.locked}>
-              {m.name}
-              {m.locked ? " 🔒" : ""}
-            </option>
-          ))}
-        </Select>
+          className="max-w-xs"
+          placeholder={isLoading ? "در حال بارگذاری…" : "انتخاب مدل"}
+          options={(textModels ?? []).map((m) => ({
+            value: m.id,
+            label: m.name,
+            disabled: m.locked,
+            hint: m.locked ? "نیازمند ارتقای پلن" : undefined,
+          }))}
+        />
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={newChat}>
+        <Button variant="outline" size="sm" onClick={newChat}>
+          <MessageSquarePlus className="size-4" />
           گفتگوی جدید
         </Button>
       </div>
@@ -183,17 +185,17 @@ export default function ChatPage() {
         <div className="mx-auto max-w-3xl px-4 py-6">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-brand-600/10 text-brand-500">
-                <Sparkles className="size-8" />
+              <div className="animate-blob mb-5 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-400 to-violet-600 text-white shadow-2xl shadow-brand-600/40">
+                <Sparkles className="size-10" />
               </div>
-              <h2 className="text-xl font-semibold">گفتگو را شروع کنید</h2>
-              <p className="mt-1 max-w-md text-sm text-gray-500">
+              <h2 className="text-2xl font-bold">گفتگو را شروع کنید</h2>
+              <p className="mt-2 max-w-md text-sm text-gray-500">
                 سؤالتان را بنویسید. تاریخچهٔ این گفتگو به‌صورت محلی نگه داشته
                 می‌شود (حالت استریم، بدون ذخیره روی سرور).
               </p>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-6">
               {messages.map((m, i) => (
                 <MessageBubble
                   key={i}
@@ -203,7 +205,6 @@ export default function ChatPage() {
                     i === messages.length - 1 &&
                     m.role === "assistant"
                   }
-                  userName={me?.name}
                 />
               ))}
             </div>
@@ -212,30 +213,30 @@ export default function ChatPage() {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-gray-200 bg-white/60 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-white/[0.02]">
-        <div className="mx-auto max-w-3xl space-y-2">
+      <div className="border-t border-gray-200 bg-white/60 px-4 py-3 backdrop-blur-xl dark:border-white/[0.06] dark:bg-surface-1/50">
+        <div className="mx-auto max-w-3xl space-y-2.5">
           {showImageField && (
-            <div className="flex items-center gap-2">
+            <div className="animate-fade-in flex items-center gap-2">
               <input
                 dir="ltr"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="https://.../image.jpg"
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+                className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
               />
               <button
                 onClick={() => {
                   setShowImageField(false);
                   setImageUrl("");
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/10"
               >
                 <X className="size-5" />
               </button>
             </div>
           )}
 
-          <div className="flex items-end gap-2 rounded-2xl border border-gray-300 bg-white p-2 dark:border-white/10 dark:bg-white/5">
+          <div className="flex items-end gap-2 rounded-2xl border border-gray-300 bg-white p-2 shadow-sm transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 dark:border-white/10 dark:bg-white/[0.04]">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -251,16 +252,22 @@ export default function ChatPage() {
               maxLength={8000}
             />
             {streaming ? (
-              <Button variant="danger" size="md" onClick={stop} className="shrink-0">
+              <Button
+                variant="danger"
+                size="md"
+                onClick={stop}
+                className="shrink-0"
+              >
                 <Square className="size-4" />
                 توقف
               </Button>
             ) : (
               <Button
-                size="md"
+                size="icon"
                 onClick={send}
                 disabled={!input.trim() || !model}
                 className="shrink-0"
+                aria-label="ارسال"
               >
                 <Send className="size-4" />
               </Button>
@@ -274,27 +281,20 @@ export default function ChatPage() {
               icon={<Globe className="size-4" />}
               label="جستجوی وب"
             />
-            <button
-              type="button"
+            <Toggle
+              active={showImageField}
               onClick={() => setShowImageField((v) => !v)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-                showImageField
-                  ? "bg-brand-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
-              )}
-            >
-              <ImagePlus className="size-4" />
-              تصویر
-            </button>
-            <div className="flex items-center gap-1 rounded-lg bg-gray-100 px-1.5 py-1 dark:bg-white/5">
-              <Brain className="size-4 text-gray-500" />
+              icon={<ImagePlus className="size-4" />}
+              label="تصویر"
+            />
+            <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 dark:border-white/[0.06] dark:bg-white/[0.04]">
+              <Brain className="size-4 text-gray-400" />
               <select
                 value={reasoning}
                 onChange={(e) =>
                   setReasoning(e.target.value as ReasoningEffort | "")
                 }
-                className="bg-transparent text-xs outline-none"
+                className="cursor-pointer bg-transparent text-xs font-medium outline-none dark:[&>option]:bg-surface-3"
               >
                 <option value="">استدلال: پیش‌فرض</option>
                 <option value="low">کم</option>
@@ -326,10 +326,10 @@ function Toggle({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
+        "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-all active:scale-95",
         active
-          ? "bg-brand-600 text-white"
-          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
+          ? "border-brand-500 bg-brand-500/15 text-brand-600 dark:text-brand-300"
+          : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-white/[0.06] dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/10"
       )}
     >
       {icon}
@@ -341,31 +341,31 @@ function Toggle({
 function MessageBubble({
   msg,
   streaming,
-  userName,
 }: {
   msg: UIMessage;
   streaming: boolean;
-  userName?: string | null;
 }) {
   const isUser = msg.role === "user";
   return (
-    <div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
+    <div
+      className={cn("animate-fade-in flex gap-3", isUser && "flex-row-reverse")}
+    >
       <div
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-lg",
+          "flex size-8 shrink-0 items-center justify-center rounded-xl shadow-sm",
           isUser
-            ? "bg-gray-200 dark:bg-white/10"
-            : "bg-brand-600 text-white"
+            ? "bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-300"
+            : "bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-brand-600/30"
         )}
       >
         {isUser ? <User className="size-4" /> : <Sparkles className="size-4" />}
       </div>
       <div
         className={cn(
-          "min-w-0 max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+          "min-w-0 max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
           isUser
-            ? "bg-brand-600 text-white"
-            : "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-gray-100"
+            ? "bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-brand-600/20"
+            : "border border-gray-200/60 bg-white text-gray-900 dark:border-white/[0.06] dark:bg-white/[0.04] dark:text-gray-100"
         )}
       >
         {msg.imageUrl && (

@@ -7,14 +7,20 @@ import {
   MessageSquare,
   Wand2,
   ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import { useMe } from "@/features/profile/hooks";
 import { useConversations } from "@/features/conversations/hooks";
 import { useGenerations } from "@/features/studio/hooks";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, Badge, EmptyState, Spinner } from "@/components/ui/Card";
+import { Card, Badge, EmptyState, Skeleton } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatCredits, formatDateTime, relativeFromNow } from "@/lib/utils";
+
+const STATUS_COLOR = {
+  success: "green",
+  failed: "red",
+} as const;
 
 export default function DashboardPage() {
   const { data: me } = useMe();
@@ -29,25 +35,30 @@ export default function DashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="bg-gradient-to-br from-brand-600 to-brand-800 text-white">
-          <div className="flex items-center gap-2 text-brand-100">
-            <Coins className="size-5" />
-            <span className="text-sm">اعتبار کیف پول</span>
+        {/* Credits — hero card */}
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-brand-500 via-brand-600 to-violet-700 text-white shadow-xl shadow-brand-600/30">
+          <div className="absolute -end-6 -top-6 size-28 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 text-brand-100">
+              <Coins className="size-5" />
+              <span className="text-sm">اعتبار کیف پول</span>
+            </div>
+            <p className="mt-3 text-3xl font-bold tabular-nums">
+              {formatCredits(me?.credits)}
+            </p>
+            <Link href="/wallet">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-4 border-white/20 bg-white/15 text-white backdrop-blur hover:bg-white/25"
+              >
+                افزایش اعتبار
+              </Button>
+            </Link>
           </div>
-          <p className="mt-3 text-3xl font-bold tabular-nums">
-            {formatCredits(me?.credits)}
-          </p>
-          <Link href="/wallet">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="mt-4 bg-white/20 text-white hover:bg-white/30"
-            >
-              افزایش اعتبار
-            </Button>
-          </Link>
         </Card>
 
+        {/* Active plan */}
         <Card>
           <div className="flex items-center gap-2 text-gray-500">
             <Crown className="size-5 text-amber-500" />
@@ -66,7 +77,11 @@ export default function DashboardPage() {
             </p>
           ) : (
             <Link href="/wallet">
-              <Button variant="ghost" size="sm" className="mt-3 px-0 text-brand-500">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 px-0 text-brand-500"
+              >
                 مشاهده پلن‌ها
                 <ArrowLeft className="size-4" />
               </Button>
@@ -74,17 +89,29 @@ export default function DashboardPage() {
           )}
         </Card>
 
+        {/* Quick actions */}
         <Card className="flex flex-col justify-between">
-          <p className="text-sm text-gray-500">شروع سریع</p>
+          <p className="flex items-center gap-2 text-sm text-gray-500">
+            <Sparkles className="size-4 text-brand-500" />
+            شروع سریع
+          </p>
           <div className="mt-3 flex flex-col gap-2">
             <Link href="/chat">
-              <Button variant="secondary" size="sm" className="w-full justify-start">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full justify-start"
+              >
                 <MessageSquare className="size-4" />
                 گفتگوی جدید
               </Button>
             </Link>
             <Link href="/studio">
-              <Button variant="secondary" size="sm" className="w-full justify-start">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full justify-start"
+              >
                 <Wand2 className="size-4" />
                 تولید رسانه
               </Button>
@@ -97,25 +124,29 @@ export default function DashboardPage() {
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">گفتگوهای اخیر</h2>
-            <Link href="/chat" className="text-sm text-brand-500 hover:underline">
+            <Link
+              href="/chat"
+              className="text-sm text-brand-500 hover:underline"
+            >
               همه
             </Link>
           </div>
           {!conversations ? (
-            <div className="py-8 text-center">
-              <Spinner className="text-brand-500" />
-            </div>
+            <ListSkeleton />
           ) : conversations.length === 0 ? (
-            <EmptyState title="هنوز گفتگویی ندارید" />
+            <EmptyState
+              icon={<MessageSquare className="size-7" />}
+              title="هنوز گفتگویی ندارید"
+            />
           ) : (
             <ul className="space-y-1">
               {conversations.slice(0, 5).map((c) => (
                 <li key={c.id}>
                   <Link
                     href={`/chat?c=${c.id}`}
-                    className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-gray-100 dark:hover:bg-white/5"
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors hover:bg-gray-100 dark:hover:bg-white/[0.04]"
                   >
-                    <span className="truncate text-sm">
+                    <span className="truncate text-sm font-medium">
                       {c.title || "گفتگوی بدون عنوان"}
                     </span>
                     <span className="shrink-0 text-xs text-gray-400">
@@ -131,31 +162,32 @@ export default function DashboardPage() {
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">تولیدهای اخیر</h2>
-            <Link href="/studio" className="text-sm text-brand-500 hover:underline">
+            <Link
+              href="/studio"
+              className="text-sm text-brand-500 hover:underline"
+            >
               همه
             </Link>
           </div>
           {!generations ? (
-            <div className="py-8 text-center">
-              <Spinner className="text-brand-500" />
-            </div>
+            <ListSkeleton />
           ) : generations.length === 0 ? (
-            <EmptyState title="هنوز تولیدی ندارید" />
+            <EmptyState
+              icon={<Wand2 className="size-7" />}
+              title="هنوز تولیدی ندارید"
+            />
           ) : (
             <ul className="space-y-1">
               {generations.slice(0, 5).map((g) => (
                 <li
                   key={g.id}
-                  className="flex items-center justify-between rounded-lg px-2 py-2"
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5"
                 >
-                  <span className="truncate text-sm">{g.model}</span>
+                  <span className="truncate text-sm font-medium">{g.model}</span>
                   <Badge
                     color={
-                      g.status === "success"
-                        ? "green"
-                        : g.status === "failed"
-                          ? "red"
-                          : "yellow"
+                      STATUS_COLOR[g.status as keyof typeof STATUS_COLOR] ??
+                      "yellow"
                     }
                   >
                     {g.status}
@@ -166,6 +198,16 @@ export default function DashboardPage() {
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-10" />
+      ))}
     </div>
   );
 }

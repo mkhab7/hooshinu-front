@@ -1,26 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { SchemaField, SchemaSelectOption } from "@/lib/types";
-import { Field, Input, Textarea, Select } from "@/components/ui/Input";
-
-function optionValue(o: SchemaSelectOption): { value: string; label: string } {
-  return typeof o === "string" ? { value: o, label: o } : o;
-}
-
-function defaults(schema: SchemaField[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const f of schema) {
-    if (f.default != null) out[f.name] = f.default;
-    else if (f.type === "select" && f.options?.length)
-      out[f.name] = optionValue(f.options[0]).value;
-  }
-  return out;
-}
+import type { SchemaField } from "@/lib/types";
+import { Field, Input, Textarea } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { optionValue, normalizeSchema, defaults } from "./schemaInput";
 
 export function useSchemaForm(schema: SchemaField[] | undefined) {
   // The backend may omit `schema` or send a non-array value, so normalize.
-  const fields = Array.isArray(schema) ? schema : [];
+  const fields = normalizeSchema(schema);
   const [values, setValues] = useState<Record<string, string>>(() =>
     defaults(fields)
   );
@@ -80,16 +68,11 @@ function SchemaFieldInput({
     case "select":
       return (
         <Field label={label}>
-          <Select value={value} onChange={(e) => onChange(e.target.value)}>
-            {field.options?.map((o) => {
-              const { value: v, label: l } = optionValue(o);
-              return (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              );
-            })}
-          </Select>
+          <Select
+            value={value}
+            onChange={onChange}
+            options={(field.options ?? []).map((o) => optionValue(o))}
+          />
         </Field>
       );
     case "audio_file":

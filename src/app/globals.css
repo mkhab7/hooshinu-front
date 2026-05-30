@@ -16,6 +16,13 @@
   --color-brand-700: #4338ca;
   --color-brand-800: #3730a3;
   --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+
+  /* Surface palette for the dark theme */
+  --color-surface-0: #08080c;
+  --color-surface-1: #0d0d14;
+  --color-surface-2: #12121c;
+  --color-surface-3: #1a1a26;
 }
 
 :root {
@@ -33,24 +40,74 @@ body {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-gray-50);
+  background-color: #f6f7fb;
   color: var(--color-gray-900);
 }
+
+/* Ambient gradient backdrop for the dark theme */
 .dark body {
-  background-color: #0a0a0f;
   color: var(--color-gray-100);
+  background-color: var(--color-surface-0);
+  background-image:
+    radial-gradient(
+      55rem 40rem at 85% -10%,
+      rgba(99, 102, 241, 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      45rem 35rem at 0% 10%,
+      rgba(139, 92, 246, 0.12),
+      transparent 55%
+    ),
+    radial-gradient(
+      40rem 40rem at 50% 120%,
+      rgba(79, 70, 229, 0.1),
+      transparent 60%
+    );
+  background-attachment: fixed;
 }
 
-/* Slightly nicer scrollbars in dark mode */
-.dark ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* Light theme subtle ambient */
+body {
+  background-image: radial-gradient(
+    50rem 40rem at 90% -10%,
+    rgba(99, 102, 241, 0.08),
+    transparent 60%
+  );
+  background-attachment: fixed;
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: #2a2a35;
+
+/* ---- Reusable surface utilities ---- */
+@utility glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.dark .glass {
+  background: rgba(20, 20, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@utility glow {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.18),
+    0 8px 40px -8px rgba(99, 102, 241, 0.45);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 140, 0.35);
   border-radius: 8px;
 }
-.dark ::-webkit-scrollbar-track {
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 140, 0.55);
+}
+::-webkit-scrollbar-track {
   background: transparent;
 }
 
@@ -60,9 +117,10 @@ body {
 }
 .prose-chat pre {
   overflow-x: auto;
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 0.85em;
 }
 .prose-chat code {
@@ -88,15 +146,115 @@ body {
 .prose-chat a {
   color: var(--color-brand-400);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .prose-chat h1,
 .prose-chat h2,
 .prose-chat h3 {
   font-weight: 700;
+  line-height: 1.3;
+}
+.prose-chat table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85em;
+}
+.prose-chat th,
+.prose-chat td {
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  padding: 0.4em 0.6em;
 }
 
+/* ---- Animations ---- */
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(3%, -4%) scale(1.06);
+  }
+  66% {
+    transform: translate(-3%, 3%) scale(0.96);
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+@utility animate-scale-in {
+  animation: scale-in 0.18s ease-out both;
+}
+@utility animate-blob {
+  animation: blob 14s ease-in-out infinite;
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(127, 127, 127, 0.12);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

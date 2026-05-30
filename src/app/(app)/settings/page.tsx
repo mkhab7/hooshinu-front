@@ -6,7 +6,8 @@ import { setLocaleStorage } from "@/lib/auth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input, Field, Select } from "@/components/ui/Input";
+import { Input, Field } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { HooshinuError } from "@/lib/api";
 import type { Locale } from "@/lib/types";
@@ -77,11 +78,12 @@ export default function SettingsPage() {
             <Field label="زبان">
               <Select
                 value={locale}
-                onChange={(e) => setLocale(e.target.value as Locale)}
-              >
-                <option value="fa">فارسی</option>
-                <option value="en">English</option>
-              </Select>
+                onChange={(v) => setLocale(v as Locale)}
+                options={[
+                  { value: "fa", label: "فارسی" },
+                  { value: "en", label: "English" },
+                ]}
+              />
             </Field>
             <Button type="submit" loading={updateProfile.isPending}>
               ذخیره تغییرات

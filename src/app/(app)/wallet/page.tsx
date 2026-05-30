@@ -90,14 +90,17 @@ export default function WalletPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         {/* Balance + top-up */}
         <div className="space-y-4">
-          <Card className="bg-gradient-to-br from-brand-600 to-brand-800 text-white">
-            <div className="flex items-center gap-2 text-brand-100">
-              <Coins className="size-5" />
-              <span className="text-sm">اعتبار فعلی</span>
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-brand-500 via-brand-600 to-violet-700 text-white shadow-xl shadow-brand-600/30">
+            <div className="absolute -end-8 -top-8 size-32 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-brand-100">
+                <Coins className="size-5" />
+                <span className="text-sm">اعتبار فعلی</span>
+              </div>
+              <p className="mt-2 text-4xl font-bold tabular-nums">
+                {walletLoading ? "…" : formatCredits(wallet?.credits)}
+              </p>
             </div>
-            <p className="mt-2 text-4xl font-bold tabular-nums">
-              {walletLoading ? "…" : formatCredits(wallet?.credits)}
-            </p>
           </Card>
 
           <Card>
@@ -108,10 +111,10 @@ export default function WalletPage() {
                   key={p}
                   onClick={() => setAmount(p)}
                   className={cn(
-                    "rounded-xl border px-3 py-2 text-sm transition-colors",
+                    "rounded-xl border px-3 py-2.5 text-sm font-medium transition-all active:scale-95",
                     amount === p
-                      ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10"
-                      : "border-gray-200 hover:border-gray-300 dark:border-white/10"
+                      ? "border-brand-500 bg-brand-50 text-brand-600 shadow-sm dark:bg-brand-500/10 dark:text-brand-300"
+                      : "border-gray-200 hover:border-brand-300 hover:bg-gray-50 dark:border-white/10 dark:hover:border-brand-500/40 dark:hover:bg-white/[0.03]"
                   )}
                 >
                   {formatToman(p)}
