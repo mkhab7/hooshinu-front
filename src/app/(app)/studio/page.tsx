@@ -127,7 +127,7 @@ export default function StudioPage() {
       toast.error("این مدل با پلن فعلی شما در دسترس نیست.");
       return;
     }
-    const input = buildInput(form.values);
+    const input = buildInput(form.values, fields);
     const missing = firstMissingRequired(fields, input);
     if (missing) {
       toast.error(`فیلد «${missing.label}» الزامی است.`);
