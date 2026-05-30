@@ -6,6 +6,7 @@ import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { optionValue, normalizeSchema, defaults } from "./schemaInput";
+import type { TFunction } from "@/lib/i18n";
 
 export function useSchemaForm(schema: SchemaField[] | undefined) {
   // The backend may omit `schema` or send a non-array value, so normalize.
@@ -23,10 +24,12 @@ export function SchemaFields({
   schema,
   values,
   onChange,
+  t,
 }: {
   schema: SchemaField[];
   values: Record<string, string>;
   onChange: (name: string, value: string) => void;
+  t: TFunction;
 }) {
   return (
     <div className="space-y-4">
@@ -36,6 +39,7 @@ export function SchemaFields({
           field={f}
           value={values[f.name] ?? ""}
           onChange={(v) => onChange(f.name, v)}
+          t={t}
         />
       ))}
     </div>
@@ -46,11 +50,15 @@ function SchemaFieldInput({
   field,
   value,
   onChange,
+  t,
 }: {
   field: SchemaField;
   value: string;
   onChange: (v: string) => void;
+  t: TFunction;
 }) {
+  // Field labels come from the backend already localized (X-Locale); only the
+  // surrounding static UI (hints/placeholders) is translated here.
   const label = `${field.label}${field.required ? " *" : ""}`;
 
   switch (field.type) {
@@ -64,15 +72,17 @@ function SchemaFieldInput({
       );
     case "dialogue": {
       const voiceHint = field.voices?.length
-        ? `گویندگان: ${field.voices.map((v) => v.label.split(" — ")[0]).join("، ")}`
-        : "هر خط را در یک سطر بنویسید.";
+        ? t("schema.dialogueVoices", {
+            voices: field.voices.map((v) => v.label.split(" — ")[0]).join("، "),
+          })
+        : t("schema.dialogueHint");
       return (
         <Field label={label} hint={voiceHint}>
           <Textarea
             rows={6}
             value={value}
             required={field.required}
-            placeholder={"گوینده ۱: سلام\nگوینده ۲: حال شما؟"}
+            placeholder={t("schema.dialoguePlaceholder")}
             onChange={(e) => onChange(e.target.value)}
           />
         </Field>
@@ -101,7 +111,7 @@ function SchemaFieldInput({
       );
     case "audio_file":
       return (
-        <Field label={label} hint="آدرس فایل صوتی (URL) را وارد کنید.">
+        <Field label={label} hint={t("schema.audioUrlHint")}>
           <Input
             dir="ltr"
             placeholder="https://.../audio.mp3"

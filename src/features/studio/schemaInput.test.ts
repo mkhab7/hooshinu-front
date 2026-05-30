@@ -153,6 +153,12 @@ describe("resolveFields", () => {
     expect(PROMPT_FIELD.required).toBe(true);
     expect(PROMPT_FIELD.name).toBe("prompt");
   });
+
+  it("uses a provided label for the prompt fallback", () => {
+    const out = resolveFields(null, "Description");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ name: "prompt", label: "Description" });
+  });
 });
 
 describe("defaults", () => {

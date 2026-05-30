@@ -16,20 +16,23 @@ import {
   Menu,
   X,
   Coins,
+  Languages,
 } from "lucide-react";
 import { cn, formatCredits } from "@/lib/utils";
 import { useMe } from "@/features/profile/hooks";
 import { useLogout } from "@/features/auth/hooks";
 import { getStoredTheme, setStoredTheme, type Theme } from "@/lib/auth";
+import { useT, useI18nStore, type TranslationKey } from "@/lib/i18n";
 import { Badge } from "@/components/ui/Card";
 
-const NAV = [
-  { href: "/dashboard", label: "داشبورد", icon: LayoutDashboard },
-  { href: "/chat", label: "گفتگو", icon: MessageSquare },
-  { href: "/studio", label: "استودیو", icon: Wand2 },
-  { href: "/wallet", label: "کیف پول", icon: Wallet },
-  { href: "/settings", label: "تنظیمات", icon: Settings },
-];
+const NAV: { href: string; key: TranslationKey; icon: typeof LayoutDashboard }[] =
+  [
+    { href: "/dashboard", key: "nav.dashboard", icon: LayoutDashboard },
+    { href: "/chat", key: "nav.chat", icon: MessageSquare },
+    { href: "/studio", key: "nav.studio", icon: Wand2 },
+    { href: "/wallet", key: "nav.wallet", icon: Wallet },
+    { href: "/settings", key: "nav.settings", icon: Settings },
+  ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -41,6 +44,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const { data: me } = useMe();
   const logout = useLogout();
+  const { t, locale } = useT();
+  const setLocale = useI18nStore((s) => s.setLocale);
+
+  function toggleLocale() {
+    setLocale(locale === "fa" ? "en" : "fa");
+  }
 
   function toggleTheme() {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -65,12 +74,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Sparkles className="size-5" />
         </span>
         <span className="bg-gradient-to-l from-brand-500 to-violet-500 bg-clip-text text-lg font-extrabold text-transparent">
-          هوشینو
+          {t("common.appName")}
         </span>
       </Link>
 
       <nav className="flex-1 space-y-1 px-3">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, key, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
@@ -93,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   active && "text-brand-500"
                 )}
               />
-              {label}
+              {t(key)}
             </Link>
           );
         })}
@@ -107,7 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <Coins className="size-4 text-amber-500" />
-            اعتبار
+            {t("common.credits")}
           </span>
           <span className="font-bold tabular-nums text-gray-900 dark:text-white">
             {formatCredits(me?.credits)}
@@ -116,11 +125,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex items-center gap-2.5 rounded-2xl border border-gray-200 px-3 py-2.5 dark:border-white/[0.06]">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-sm font-bold text-white">
-            {(me?.name || "ه").charAt(0)}
+            {(me?.name || t("nav.defaultUser")).charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
-              {me?.name || "کاربر هوشینو"}
+              {me?.name || t("nav.defaultUser")}
             </p>
             <p dir="ltr" className="truncate text-xs text-gray-500">
               {me?.phone}
@@ -133,8 +142,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex gap-2">
           <button
+            onClick={toggleLocale}
+            aria-label={t("settings.language")}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-white/[0.06] dark:text-gray-300 dark:hover:bg-white/[0.06]"
+          >
+            <Languages className="size-4" />
+            {locale === "fa" ? "EN" : "فا"}
+          </button>
+          <button
             onClick={toggleTheme}
-            aria-label="تغییر تم"
+            aria-label={t("nav.toggleTheme")}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 dark:border-white/[0.06] dark:text-gray-300 dark:hover:bg-white/[0.06]"
           >
             {theme === "dark" ? (
@@ -148,7 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-white/[0.06] dark:hover:bg-red-500/10"
           >
             <LogOut className="size-4" />
-            خروج
+            {t("nav.logout")}
           </button>
         </div>
       </div>
@@ -180,7 +197,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white/70 px-4 py-3 backdrop-blur-xl md:hidden dark:border-white/[0.06] dark:bg-surface-1/70">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Sparkles className="size-5 text-brand-500" />
-            <span className="font-bold">هوشینو</span>
+            <span className="font-bold">{t("common.appName")}</span>
           </Link>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1 text-sm font-medium">
@@ -189,7 +206,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
             <button
               onClick={() => setOpen(true)}
-              aria-label="منو"
+              aria-label={t("nav.menu")}
               className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-white/10"
             >
               <Menu className="size-6" />

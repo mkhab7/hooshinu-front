@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore, getStoredTheme } from "@/lib/auth";
+import { useI18nStore } from "@/lib/i18n";
 import { HooshinuError } from "@/lib/api";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const hydrate = useAuthStore((s) => s.hydrate);
+  const hydrateI18n = useI18nStore((s) => s.hydrate);
 
   const [client] = useState(
     () =>
@@ -28,12 +30,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  // Hydrate auth token + apply stored theme before paint.
+  // Hydrate auth token + locale + apply stored theme before paint.
   useEffect(() => {
     hydrate();
+    hydrateI18n();
     const theme = getStoredTheme();
     document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [hydrate]);
+  }, [hydrate, hydrateI18n]);
 
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
