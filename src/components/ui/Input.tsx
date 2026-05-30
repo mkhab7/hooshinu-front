@@ -4,13 +4,13 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 const base =
-  "w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60 border-gray-300 text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 dark:placeholder:text-gray-500";
+  "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60 border-gray-300 text-gray-900 hover:border-gray-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-100 dark:placeholder:text-gray-500 dark:hover:border-white/20 dark:focus:border-brand-500";
 
 export const Input = forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement>
 >(function Input({ className, ...rest }, ref) {
-  return <input ref={ref} className={cn(base, className)} {...rest} />;
+  return <input ref={ref} className={cn(base, "h-11", className)} {...rest} />;
 });
 
 export const Textarea = forwardRef<
@@ -23,17 +23,6 @@ export const Textarea = forwardRef<
       className={cn(base, "resize-none leading-relaxed", className)}
       {...rest}
     />
-  );
-});
-
-export const Select = forwardRef<
-  HTMLSelectElement,
-  React.SelectHTMLAttributes<HTMLSelectElement>
->(function Select({ className, children, ...rest }, ref) {
-  return (
-    <select ref={ref} className={cn(base, "cursor-pointer", className)} {...rest}>
-      {children}
-    </select>
   );
 });
 

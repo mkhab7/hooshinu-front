@@ -83,20 +83,27 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4 dark:from-[#0a0a0f] dark:to-[#10101a]">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      {/* Ambient blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="animate-blob absolute -top-20 end-1/4 size-72 rounded-full bg-brand-500/30 blur-3xl" />
+        <div className="animate-blob absolute bottom-0 start-1/4 size-80 rounded-full bg-violet-500/20 blur-3xl [animation-delay:3s]" />
+      </div>
       <Toaster />
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/30">
-            <Sparkles className="size-7" />
+          <div className="animate-blob mb-4 flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-400 to-violet-600 text-white shadow-2xl shadow-brand-600/40">
+            <Sparkles className="size-8" />
           </div>
-          <h1 className="text-2xl font-bold">هوشینو</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="bg-gradient-to-l from-brand-500 to-violet-500 bg-clip-text text-3xl font-extrabold text-transparent">
+            هوشینو
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">
             پلتفرم هوش مصنوعی فارسی — ورود با شماره موبایل
           </p>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="glass rounded-3xl p-6 shadow-2xl shadow-black/10">
           {step === "phone" ? (
             <form onSubmit={submitPhone} className="space-y-4">
               <Field label="شماره موبایل">

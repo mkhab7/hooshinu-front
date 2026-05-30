@@ -213,18 +213,3 @@ export type Plan = {
   level: number;
   duration_days: number;
 };
-
-// ---- API keys ----
-export type ApiKey = {
-  id: number;
-  name: string;
-  prefix: string;
-  revoked: boolean;
-  last_used_at: string | null;
-  created_at: string;
-};
-
-export type CreateApiKeyResponse = {
-  data: ApiKey;
-  token: string;
-};
