@@ -35,6 +35,21 @@ function streamResponse(
   } as unknown as Response;
 }
 
+/** A JSON (non-stream) Response, e.g. for /chat/stream/prepare. */
+function jsonResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number } = {}
+) {
+  const { ok = true, status = 200 } = init;
+  return {
+    ok,
+    status,
+    body: null,
+    headers: { get: () => null },
+    json: async () => body,
+  } as unknown as Response;
+}
+
 function sseLine(obj: unknown) {
   return `data: ${JSON.stringify(obj)}\n\n`;
 }
@@ -47,23 +62,62 @@ function chunk(content?: string, finish: string | null = null) {
   };
 }
 
+const isPrepare = (url: string) => url.includes("/chat/stream/prepare");
+const isRelay = (url: string) => url.includes("/relay/stream");
+const isDirect = (url: string) => url.includes("/chat/completions");
+
+/**
+ * Route fetch by URL so tests can drive Path A (relay) and Path B (direct)
+ * independently. `prepareOk: false` simulates the relay being disabled.
+ */
+function routeFetch(opts: {
+  prepare?: () => Response | Promise<Response>;
+  relay?: () => Response | Promise<Response>;
+  direct?: () => Response | Promise<Response>;
+}) {
+  return vi.fn(async (url: string) => {
+    if (isPrepare(url)) {
+      if (opts.prepare) return opts.prepare();
+      return jsonResponse({ token: "relay_tok" });
+    }
+    if (isRelay(url)) {
+      if (opts.relay) return opts.relay();
+      return streamResponse(["data: [DONE]\n\n"]);
+    }
+    if (isDirect(url)) {
+      if (opts.direct) return opts.direct();
+      return streamResponse(["data: [DONE]\n\n"]);
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+}
+
+/** Relay disabled → prepare returns 503 with error.type === "relay_disabled". */
+function relayDisabledPrepare() {
+  return jsonResponse(
+    { error: { message: "relay off", type: "relay_disabled" } },
+    { ok: false, status: 503 }
+  );
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
-describe("streamChatCompletion", () => {
+describe("streamChatCompletion — relay path (A)", () => {
   it("emits a delta per content chunk and then calls onDone at [DONE]", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        streamResponse([
-          sseLine(chunk("سلام")),
-          sseLine(chunk(" دنیا")),
-          sseLine(chunk(undefined, "stop")),
-          "data: [DONE]\n\n",
-        ])
-      )
+      routeFetch({
+        relay: () =>
+          streamResponse([
+            sseLine(chunk("سلام")),
+            sseLine(chunk(" دنیا")),
+            sseLine(chunk(undefined, "stop")),
+            "data: [DONE]\n\n",
+          ]),
+      })
     );
 
     const deltas: string[] = [];
@@ -85,9 +139,10 @@ describe("streamChatCompletion", () => {
     const mid = Math.floor(full.length / 2);
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        streamResponse([full.slice(0, mid), full.slice(mid), "data: [DONE]\n\n"])
-      )
+      routeFetch({
+        relay: () =>
+          streamResponse([full.slice(0, mid), full.slice(mid), "data: [DONE]\n\n"]),
+      })
     );
 
     const deltas: string[] = [];
@@ -101,9 +156,10 @@ describe("streamChatCompletion", () => {
   it("ignores keep-alive / non-JSON lines", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        streamResponse([": keep-alive\n\n", sseLine(chunk("ok")), "data: [DONE]\n\n"])
-      )
+      routeFetch({
+        relay: () =>
+          streamResponse([": keep-alive\n\n", sseLine(chunk("ok")), "data: [DONE]\n\n"]),
+      })
     );
     const deltas: string[] = [];
     await streamChatCompletion(
@@ -113,29 +169,92 @@ describe("streamChatCompletion", () => {
     expect(deltas).toEqual(["ok"]);
   });
 
-  it("forces stream:true in the request body", async () => {
-    const f = vi.fn(async () => streamResponse(["data: [DONE]\n\n"]));
+  it("passes the prepare token to the relay URL (no Bearer header needed)", async () => {
+    const f = routeFetch({});
+    vi.stubGlobal("fetch", f);
+    await streamChatCompletion(
+      { model: "m", messages: [] },
+      { onDelta: () => {} }
+    );
+    const relayCall = f.mock.calls.find((c) => isRelay(c[0] as string));
+    expect(relayCall?.[0]).toContain("token=relay_tok");
+  });
+
+  it("does NOT fall back to direct on a non-relay_disabled error", async () => {
+    const f = routeFetch({
+      prepare: () =>
+        jsonResponse(
+          { error: { message: "اعتبار کافی نیست", type: "insufficient_credits" } },
+          { ok: false, status: 402 }
+        ),
+    });
+    vi.stubGlobal("fetch", f);
+
+    const onError = vi.fn();
+    await streamChatCompletion(
+      { model: "m", messages: [] },
+      { onDelta: () => {}, onError }
+    );
+
+    // No direct call attempted; the error surfaces to the user.
+    expect(f.mock.calls.some((c) => isDirect(c[0] as string))).toBe(false);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toMatchObject({
+      type: "insufficient_credits",
+      status: 402,
+    });
+  });
+});
+
+describe("streamChatCompletion — fallback to direct (B)", () => {
+  it("falls back to /chat/completions when the relay is disabled", async () => {
+    const f = routeFetch({
+      prepare: relayDisabledPrepare,
+      direct: () => streamResponse([sseLine(chunk("ok")), "data: [DONE]\n\n"]),
+    });
+    vi.stubGlobal("fetch", f);
+
+    const deltas: string[] = [];
+    const onDone = vi.fn();
+    await streamChatCompletion(
+      { model: "m", messages: [] },
+      { onDelta: (d) => deltas.push(d), onDone }
+    );
+
+    expect(f.mock.calls.some((c) => isDirect(c[0] as string))).toBe(true);
+    expect(deltas).toEqual(["ok"]);
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("forces stream:true in the direct request body", async () => {
+    const f = routeFetch({
+      prepare: relayDisabledPrepare,
+      direct: () => streamResponse(["data: [DONE]\n\n"]),
+    });
     vi.stubGlobal("fetch", f);
     await streamChatCompletion(
       { model: "m", messages: [], stream: false as never },
       { onDelta: () => {} }
     );
-    const body = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string);
+    const directCall = f.mock.calls.find((c) => isDirect(c[0] as string))!;
+    const body = JSON.parse((directCall[1] as RequestInit).body as string);
     expect(body.stream).toBe(true);
   });
 
-  it("calls onError with the backend error on a non-ok response", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        status: 402,
-        body: null,
-        json: async () => ({
-          error: { message: "اعتبار کافی نیست", type: "insufficient_credits" },
-        }),
-      }) as unknown as Response)
-    );
+  it("surfaces a backend error from the direct path", async () => {
+    const f = routeFetch({
+      prepare: relayDisabledPrepare,
+      direct: () =>
+        ({
+          ok: false,
+          status: 402,
+          body: null,
+          json: async () => ({
+            error: { message: "اعتبار کافی نیست", type: "insufficient_credits" },
+          }),
+        }) as unknown as Response,
+    });
+    vi.stubGlobal("fetch", f);
 
     const onError = vi.fn();
     const onDelta = vi.fn();
@@ -151,7 +270,9 @@ describe("streamChatCompletion", () => {
       status: 402,
     });
   });
+});
 
+describe("streamChatCompletion — network", () => {
   it("calls onError on a network failure", async () => {
     vi.stubGlobal(
       "fetch",
@@ -165,6 +286,7 @@ describe("streamChatCompletion", () => {
       { onDelta: () => {}, onError }
     );
     expect(onError).toHaveBeenCalledTimes(1);
+    // The prepare call fails first → api() wraps it as a network error.
     expect(onError.mock.calls[0][0]).toMatchObject({ type: "network" });
   });
 });
