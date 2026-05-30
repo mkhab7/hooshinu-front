@@ -4,7 +4,7 @@
 //           intentionally disabled (503 error.type === "relay_disabled").
 // EventSource can't send the Authorization header, so we read the SSE body
 // manually with fetch + ReadableStream.
-import { BASE, HooshinuError, api } from "./api";
+import { BASE, RELAY_BASE, HooshinuError, api } from "./api";
 import { getToken, getLocale } from "./auth";
 import type { ChatCompletionRequest, ChatCompletionChunk } from "./types";
 
@@ -69,10 +69,13 @@ export function streamChatCompletion(
           signal,
           body: JSON.stringify({ model, messages, web_search, reasoning_effort }),
         });
-        // The relay is same-origin (behind nginx); the token in the query is
-        // enough — no Bearer header needed.
+        // Call the relay on the backend ORIGIN with an absolute URL. A relative
+        // "/relay/stream" would hit the SPA's own origin (e.g. localhost:3000)
+        // and 404 in dev; in prod behind the same nginx this is same-origin
+        // anyway. The token in the query authorizes the connection — no Bearer
+        // header needed (which is also why EventSource-style auth is fine here).
         const res = await fetch(
-          `/relay/stream?token=${encodeURIComponent(prep.token)}`,
+          `${RELAY_BASE}/relay/stream?token=${encodeURIComponent(prep.token)}`,
           { signal, headers: { Accept: "text/event-stream" } }
         );
         if (!res.ok || !res.body) {

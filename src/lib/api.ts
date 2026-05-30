@@ -6,6 +6,19 @@ export const BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ??
   "http://216.106.187.220/v1";
 
+/**
+ * Origin of the relay SSE endpoint (`/relay/stream`). The relay lives at the
+ * backend root, NOT under `/v1`, so we must call it with an ABSOLUTE URL on the
+ * backend origin — a relative `/relay/stream` would resolve to the SPA's own
+ * origin (e.g. localhost:3000) and 404. Defaults to BASE minus the `/v1` (or a
+ * trailing API path); override with NEXT_PUBLIC_RELAY_BASE if the relay is
+ * hosted elsewhere. In production behind the same nginx, this naturally becomes
+ * same-origin.
+ */
+export const RELAY_BASE =
+  process.env.NEXT_PUBLIC_RELAY_BASE?.replace(/\/$/, "") ??
+  BASE.replace(/\/v1\/?$/, "");
+
 /** Error thrown by the api() wrapper; carries the backend's {message,type}. */
 export class HooshinuError extends Error {
   type: string;
