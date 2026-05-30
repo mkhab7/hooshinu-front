@@ -1,4 +1,4 @@
-# Hooshinu — Frontend Handoff & API Contract (v1.2)
+# Hooshinu — Frontend Handoff & API Contract (v1.3)
 
 > **How to use this file:** Open a fresh session and paste this whole file as the
 > first message. It is self-contained: it tells the assistant what to build, the
@@ -11,6 +11,12 @@
 
 ## Changelog
 
+- **v1.3** — Clarified that the relay (`/relay/stream`) must be called with an
+  **absolute URL** on the backend origin (`RELAY_BASE`), not a relative path: in
+  dev the SPA is on a different origin (`localhost:3000`) so a relative
+  `/relay/stream` 404s against the Next dev server. This also makes the relay
+  call cross-origin in dev, so nginx must send CORS headers on `/relay/*`
+  (harmless to same-origin Livewire). Same code works in dev and prod.
 - **v1.2** — Added `POST /v1/chat/stream/prepare` (Bearer auth): a relay-backed
   streaming handshake for the SPA, so long chat streams don't pin PHP workers.
   Returns a short-lived token the SPA hands to `GET /relay/stream?token=…`
@@ -344,17 +350,32 @@ data: [DONE]
 // 503 relay_disabled → fall back to Path B
 ```
 
-**Step 2 — Connect** to the relay (same-origin via nginx, no Bearer header here
-— the token authorizes the connection):
+**Step 2 — Connect** to the relay (no Bearer header here — the token authorizes
+the connection):
 ```ts
 const prep = await api<{ token: string }>("/chat/stream/prepare", {
   method: "POST", body: JSON.stringify({ model, messages /*, web_search, reasoning_effort */ }),
 });
-const res = await fetch(`/relay/stream?token=${encodeURIComponent(prep.token)}`, {
+// Use an ABSOLUTE URL on the backend origin (RELAY_BASE), not a relative path.
+const res = await fetch(`${RELAY_BASE}/relay/stream?token=${encodeURIComponent(prep.token)}`, {
   headers: { Accept: "text/event-stream" },
 });
 await readSSE(res, appendToUI);   // see readSSE below — same reader for both paths
 ```
+
+> ⚠️ **Use an absolute URL for the relay (origin matters).** The relay lives at
+> the backend ROOT (`/relay/stream`), not under `/v1`. A *relative*
+> `/relay/stream` resolves against the SPA's own origin — fine in production when
+> the SPA sits behind the same nginx (same-origin), but in dev the SPA runs on a
+> different origin (e.g. `http://localhost:3000`) so the relative path hits the
+> Next dev server and 404s. Call it with an absolute URL on the backend origin:
+> `RELAY_BASE = NEXT_PUBLIC_API_BASE` minus the trailing `/v1` (override with
+> `NEXT_PUBLIC_RELAY_BASE`). The same code then works in both dev (cross-origin)
+> and prod (same-origin).
+>
+> Because the dev call is **cross-origin**, nginx must send CORS headers on
+> `/relay/*` (already handled for `/v1/*`). Livewire ignores these (it's
+> same-origin), so they're harmless there and only help the SPA.
 
 On a `503 relay_disabled` from prepare, immediately fall back to Path B with the
 same `messages`. No UX difference for the user.

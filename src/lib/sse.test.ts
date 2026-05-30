@@ -6,6 +6,7 @@ vi.mock("./auth", () => ({
 }));
 
 import { streamChatCompletion } from "./sse";
+import { RELAY_BASE } from "./api";
 
 /** Build a fake fetch Response whose body streams the given UTF-8 chunks. */
 function streamResponse(
@@ -178,6 +179,21 @@ describe("streamChatCompletion — relay path (A)", () => {
     );
     const relayCall = f.mock.calls.find((c) => isRelay(c[0] as string));
     expect(relayCall?.[0]).toContain("token=relay_tok");
+  });
+
+  it("calls the relay with an ABSOLUTE URL on the backend origin (not relative)", async () => {
+    const f = routeFetch({});
+    vi.stubGlobal("fetch", f);
+    await streamChatCompletion(
+      { model: "m", messages: [] },
+      { onDelta: () => {} }
+    );
+    const relayUrl = f.mock.calls.find((c) => isRelay(c[0] as string))?.[0] as string;
+    // Must be absolute (starts with the relay origin), not a bare "/relay/...".
+    expect(relayUrl.startsWith("/relay/")).toBe(false);
+    expect(relayUrl).toBe(`${RELAY_BASE}/relay/stream?token=relay_tok`);
+    // And the relay origin must NOT include the /v1 API prefix.
+    expect(RELAY_BASE).not.toMatch(/\/v1$/);
   });
 
   it("does NOT fall back to direct on a non-relay_disabled error", async () => {
